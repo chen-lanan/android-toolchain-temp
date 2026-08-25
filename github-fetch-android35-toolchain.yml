@@ -1,0 +1,39 @@
+name: Export Android 35 Toolchain
+
+on:
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Locate Android SDK files
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          test -n "$ROOT"
+          BT="$ROOT/build-tools/35.0.1"
+          PLATFORM="$ROOT/platforms/android-35/android.jar"
+          test -x "$BT/aapt2"
+          test -f "$PLATFORM"
+          test -f "$BT/lib/d8.jar"
+          test -f "$BT/lib/apksigner.jar"
+          mkdir -p out
+          cp "$BT/aapt2" out/aapt2
+          cp "$PLATFORM" out/android.jar
+          cp "$BT/lib/d8.jar" out/d8.jar
+          cp "$BT/lib/apksigner.jar" out/apksigner.jar
+          chmod +x out/aapt2
+          sha256sum out/* | tee out/SHA256SUMS.txt
+          file out/aapt2
+          java -cp out/d8.jar com.android.tools.r8.D8 --version
+          java -cp out/apksigner.jar com.android.apksigner.ApkSignerTool --version
+
+      - name: Upload toolchain
+        uses: actions/upload-artifact@v4
+        with:
+          name: android35-toolchain-linux-x86_64
+          path: out/
+          retention-days: 7
+          compression-level: 0
